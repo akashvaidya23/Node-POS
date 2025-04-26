@@ -1,11 +1,15 @@
-const { User } = require("../models/user")
+const { User } = require("../models/user");
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+var jwt = require('jsonwebtoken');
+const { secretKey, options } = require("../constant");
 
 const HandleGetAllUsers = async (req, response, err) => {
     try {
         const allUsers = await User.find({});
-        return response.json({ status: 200, users : allUsers});
+        return response.json({ status: 200, users: allUsers });
     } catch (Exception) {
-        return response.json({ status: 500, message : "Something went wrong", error : Exception });
+        return response.json({ status: 500, message: "Something went wrong", error: Exception });
     }
 }
 
@@ -30,11 +34,11 @@ const handleUpdateUserByID = async (req, resp) => {
     }
 }
 
-const handleDeleteUserById = async(req, resp) => {
+const handleDeleteUserById = async (req, resp) => {
     try {
         const id = req.params.id;
         await User.findByIdAndDelete(id);
-        return resp.json({status: 200, message : "User deleted successfully" });
+        return resp.json({ status: 200, message: "User deleted successfully" });
     } catch (Exception) {
         return response.json({ status: 500, message: "Something went wrong", Exception });
     }
@@ -43,14 +47,76 @@ const handleDeleteUserById = async(req, resp) => {
 const HandleCreateNewUser = async (req, resp) => {
     try {
         const body = req.body;
+        body.password = await bcrypt.hash(body.password, saltRounds);
         const result = await User.create(body);
-        return resp.json({status: 200, user : result, message : 'User created successfully'});
+        const createdUser = await User.findById(result._id).select("-password");
+        const accessToken = jwt.sign(createdUser, secretKey, {expiresIn: '5m'});
+        return resp.status(200)
+            .cookie('accessToken', accessToken, options)
+            .json({
+                success: true,
+                user: createdUser,
+                message: 'User created successfully'
+            });
     } catch (Exception) {
         console.log(Exception);
-        return resp.json({ status: 500, message: "Something went wrong", Exception });
+        return resp.json({ status: 500, message: "Something went wrong" });
     }
 }
 
+const handleLogin = async (req, resp) => {
+    try {
+        if(req.cookies.accessToken) {
+            return resp.status(400).json({
+                success: true,
+                message: "You are already logged in"
+            });
+        }
+        const email = req.body.email;
+        const user_password = req.body.password;
+        if (!email || !user_password) {
+            return resp.status(400).json({
+                success: false,
+                message: "Kindly provide email and password"
+            });
+        }
+        let existingUser = await User.findOne({ email });
+        existingUser = existingUser.toObject();
+        const compared_password = await bcrypt.compare(user_password, existingUser.password);
+        if (compared_password) {
+            const { password, __v, ...user } = existingUser;
+            var accessToken = jwt.sign({ user }, secretKey, { expiresIn: '5m' });
+            return resp.status(200).
+                cookie("accessToken", accessToken, options).
+                json({
+                    success: true,
+                    message: "Logged in successfully",
+                    user
+                });
+        } else {
+            return resp.status(401).json({
+                success: false,
+                message: "Invalid email or password"
+            });
+        }
+    } catch (error) {
+        console.log("Error in login ", error);
+        return resp.status(500).json({
+            success: false,
+            message: "Error in login"
+        });
+    }
+}
+
+const handleLogout = async (req, resp) => {
+    return resp.status(200).
+        clearCookie("accessToken", options).
+        json({
+            status: true,
+            message: "User logged out successfully"
+        });
+}
+
 module.exports = {
-    HandleGetAllUsers, handelGetUserById, handleUpdateUserByID, handleDeleteUserById, HandleCreateNewUser
+    HandleGetAllUsers, handelGetUserById, handleUpdateUserByID, handleDeleteUserById, HandleCreateNewUser, handleLogin, handleLogout
 }

@@ -1,0 +1,156 @@
+const { Brand } = require("../models/brand");
+const { Category } = require("../models/category");
+const { Product } = require("../models/product");
+const fs = require("fs");
+
+// Get all the products
+const Index = async (req, resp) => {
+    try {
+        const products = await Product.find({})
+            .populate(['category', 'brand', 'created_by']);
+        return resp.status(200).json({
+            success: true,
+            message: "Products fetched successfully",
+            products
+        });
+    } catch (error) {
+        console.log("Error in fetching products ", error);
+        return resp.json({
+            success: false,
+            message: "Error in fetching products"
+        })
+    }
+};
+
+// Store the product
+const Store = async (req, resp) => {
+    try {
+        const { name, sku, category, brand, description, purchase_price, gst, gst_type, user_id } = req.body;
+        const errors = [];
+        if (!name) {
+            errors.push({ name: "Name can not be null" });
+        }
+        if (!sku) {
+            errors.push({ sku: "Sku can not be null" });
+        }
+        if (sku) {
+            const product = await Product.findOne({ sku });
+            if (product) {
+                errors.push({ skuExists: `SKU ${sku} already exists` });
+            }
+        }
+        if (!brand) {
+            errors.push({ brand: "Brand can not be null" });
+        } else {
+            const checkBrand = await Brand.findById(brand);
+            // console.log("checkBrand ", checkBrand);
+            if (!checkBrand) {
+                errors.push({ brandNotFound: `Brand with id ${brand} does not exist` });
+            }
+        }
+        if (!category) {
+            errors.push({ category: "Category can not be null" });
+        } else {
+            const checkCategory = await Category.findById(category);
+            // console.log("checkCategory ", checkCategory);
+            if (!checkCategory) {
+                errors.push({ categoryNotFound: `Category with id ${category} does not exist` });
+            }
+        }
+        // console.log("gst ", typeof gst);
+        const gsts = [0.00, 5.00, 10.00, 12.00, 18.00, 28.00];
+        // console.log("gst includes ", gsts.includes(parseFloat(gst)));
+        if (!gsts.includes(parseFloat(gst))) {
+            errors.push({ GSTError: "GST does not exists" });
+        }
+        if (errors.length > 0) {
+            return resp.status(400).json({
+                success: false,
+                message: "Something went wrong",
+                errors
+            });
+        }
+        const selling_price = purchase_price * (100 + gst) / 100;
+        const newProduct = await Product.create({ name, sku, category, brand, description, purchase_price, gst, gst_type, selling_price, created_by: user_id });
+        if (newProduct) {
+            return resp.status(200).json({
+                success: true,
+                message: "Product created successfully",
+                newProduct
+            });
+        }
+    } catch (error) {
+        console.log("Error in creating product ", error);
+        fs.appendFile('error.log', `${new Date().toISOString()} - Error in creating product: ${error?.message}\n`, (err) => {
+            if (err) {
+                console.error("Failed to write error to log file", err);
+            }
+        });
+        return resp.status(500).json({
+            success: false,
+            message: "Something went wrong",
+        });
+    }
+};
+
+// Find product by ID
+const Show = async (req, resp) => {
+    try {
+        const id = req.params.id;
+        const product = await Product.findOne({ _id: id });
+        if (product) {
+            return resp.status(200).json({
+                success: true,
+                message: "Product fetched successfully",
+                product
+            });
+        } else {
+            return resp.status(500).json({
+                success: true,
+                message: "Product with given id not found"
+            });
+        }
+    } catch (error) {
+        console.log("Error in fetching product ", error);
+        return resp.status(500).json({
+            success: false,
+            message: "Error in fetching product by id"
+        });
+    }
+}
+
+// Delete product by ID
+const Delete = async (req, resp) => {
+    try {
+        const id = req.params.id;
+        const product = await Product.findById({ _id: id });
+        console.log(product);
+        if (product) {
+            const result = await product.deleteOne();
+            if (result) {
+                return resp.status(200).json({
+                    success: true,
+                    message: "Product deleted successfully"
+                });
+            } else {
+                return resp.status(500).json({
+                    success: false,
+                    message: "Error in deleting product"
+                });
+            }
+        } else {
+            return resp.status(400).json({
+                success: false,
+                message: "Product with given id not found"
+            })
+        }
+    } catch (error) {
+        console.log("Error in deleting product " + error);
+        return resp.status(500).json({
+            success: false,
+            message: "Error in deleting product"
+        })
+    }
+}
+
+module.exports = { Store, Index, Show, Delete };

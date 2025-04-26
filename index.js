@@ -1,35 +1,45 @@
-const http = require('http');
 const express = require("express");
 const cors = require('cors');
-const url = 'mongodb://127.0.0.1:27017/POS';
 const app = express();
-const PORT = 8001;
-const userRouter = require("./routes/user");
 const { connectMongoDB } = require('./connection');
 const { logUsers } = require('./middlewares');
-const categoryRouter = require('./routes/category');
+const { url, PORT } = require('./constant');
+const { categoryRouter } = require('./routes/category');
+const { userRouter } = require("./routes/user");
+const { brandRouter } = require('./routes/brand');
+const { productRouter } = require('./routes/product');
+var cookieParcer = require('cookie-parser');
+const multer = require('multer');
+const upload = multer();
+const fs = require("fs");
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({
+    limit: "20kb"
+}));
+app.use(express.urlencoded({extended: true, limit: "20kb"}));
+app.use(express.static("public"));
+app.use(cookieParcer());
 
 app.use(cors());
 app.use(cors({
     origin: 'http://localhost:5173',
     credentials: true,
 }));
+app.use(upload.any());
 
 // Connection to mongo
 connectMongoDB(url).then(() => {
     console.log("Connected to MongoDB successfully");
-});;
+});
 
 // Middleware
 app.use(logUsers('./pos.log'));
 
 // Routes
 app.use("/api/users", userRouter);
-
 app.use("/api/category", categoryRouter);
+app.use("/api/brand", brandRouter);
+app.use("/api/product", productRouter);
 
 app.get("/", (req, res) => {
     return res.json({ 'message': "Welcome to POS" });

@@ -5,6 +5,9 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     }, 
+    middle_name:{
+        type: String
+    },
     last_name:{
         type: String,
     },
@@ -13,11 +16,15 @@ const userSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
-    job_title: {
+    role: {
         type: String
     },
     gender: {
         type: String
+    },
+    password: {
+        type: String,
+        required: true
     }
 }, {timestamps: true});
 

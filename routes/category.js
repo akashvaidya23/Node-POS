@@ -4,4 +4,4 @@ const categoryRouter = express.Router();
 
 categoryRouter.post("/", Store).get("/", Index).delete("/:id", Drop).patch("/:id", Update);
 
-module.exports = categoryRouter;
+module.exports = { categoryRouter };
