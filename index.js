@@ -3,7 +3,7 @@ const cors = require('cors');
 const app = express();
 const { connectMongoDB } = require('./connection');
 const { logUsers } = require('./middlewares');
-const { url, PORT } = require('./constant');
+const { url, PORT, DB_name } = require('./constant');
 const { categoryRouter } = require('./routes/category');
 const { userRouter } = require("./routes/user");
 const { brandRouter } = require('./routes/brand');
@@ -28,7 +28,7 @@ app.use(cors({
 app.use(upload.any());
 
 // Connection to mongo
-connectMongoDB(url).then(() => {
+connectMongoDB(url, DB_name).then(() => {
     console.log("Connected to MongoDB successfully");
 });
 

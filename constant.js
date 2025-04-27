@@ -1,11 +1,12 @@
 const secretKey = "SAMPLEPOS";
-const url = 'mongodb://127.0.0.1:27017/POS';
+const url = 'mongodb+srv://akashvaidya23:12345@cluster0.h9xfb0c.mongodb.net';
 PORT = 8001; 
 const options = {
     httpOnly: true,
     secure: true,
 }
+const DB_name = 'POS';
 
 module.exports = {
-    secretKey, options, url, PORT
+    secretKey, options, url, PORT, DB_name
 }

@@ -47,10 +47,20 @@ const handleDeleteUserById = async (req, resp) => {
 const HandleCreateNewUser = async (req, resp) => {
     try {
         const body = req.body;
+        console.log("body ", body);
+        const checkUser = await User.findOne({ email: body.email });
+        console.log("checkUser ", checkUser);
+        if (checkUser) {
+            return resp.status(400).json({
+                success: false,
+                message: `User with email already exists`
+            });
+        }
         body.password = await bcrypt.hash(body.password, saltRounds);
         const result = await User.create(body);
         const createdUser = await User.findById(result._id).select("-password");
-        const accessToken = jwt.sign(createdUser, secretKey, {expiresIn: '5m'});
+        // console.log("createdUser ", createdUser.toObject());
+        const accessToken = jwt.sign(createdUser.toObject(), secretKey, { expiresIn: '5m' });
         return resp.status(200)
             .cookie('accessToken', accessToken, options)
             .json({
@@ -60,13 +70,13 @@ const HandleCreateNewUser = async (req, resp) => {
             });
     } catch (Exception) {
         console.log(Exception);
-        return resp.json({ status: 500, message: "Something went wrong" });
+        return resp.status(500).json({ success: false, message: "Something went wrong" });
     }
 }
 
 const handleLogin = async (req, resp) => {
     try {
-        if(req.cookies.accessToken) {
+        if (req.cookies.accessToken) {
             return resp.status(400).json({
                 success: true,
                 message: "You are already logged in"
@@ -81,6 +91,12 @@ const handleLogin = async (req, resp) => {
             });
         }
         let existingUser = await User.findOne({ email });
+        if (!existingUser) {
+            return resp.status(400).json({
+                success: false,
+                message: 'User with email not found'
+            });
+        }
         existingUser = existingUser.toObject();
         const compared_password = await bcrypt.compare(user_password, existingUser.password);
         if (compared_password) {
@@ -96,7 +112,7 @@ const handleLogin = async (req, resp) => {
         } else {
             return resp.status(401).json({
                 success: false,
-                message: "Invalid email or password"
+                message: "Incorrect password"
             });
         }
     } catch (error) {
