@@ -133,6 +133,41 @@ const handleLogout = async (req, resp) => {
         });
 }
 
+const handleAdminCreate = async (req, resp) => {
+    try {
+        const payload = {
+            first_name: "Super Admin",
+            email: "superAdmin@gmail.com",
+            password: await bcrypt.hash("SuperAdmin@123", saltRounds),
+            role: "superAdmin"
+        };
+        // check if superAdmin is already created
+        const check = await User.findOne({ role: "superAdmin" });
+        console.log(check);
+        if (check) {
+            return resp.status(400).json({
+                success: false,
+                message: "Can not create user"
+            });
+        }
+        const result = await User.create(payload);
+        if (result) {
+            const createdUser = await User.findById(result._id).select("-password");
+            return resp.status(200).json({
+                success: true,
+                message: 'User created successfully',
+                createdUser
+            });
+        }
+    } catch (error) {
+        console.log(" Error in creating super admin user ", error);
+        return resp.status(500).json({
+            success: false,
+            message: "Error in creating user"
+        });
+    }
+}
+
 module.exports = {
-    HandleGetAllUsers, handelGetUserById, handleUpdateUserByID, handleDeleteUserById, HandleCreateNewUser, handleLogin, handleLogout
+    HandleGetAllUsers, handelGetUserById, handleUpdateUserByID, handleDeleteUserById, HandleCreateNewUser, handleLogin, handleLogout, handleAdminCreate
 }

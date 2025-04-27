@@ -25,24 +25,24 @@ const checkAuth = async (req, resp, next) => {
             });
         }
         const decoded_token = await jwt.verify(accessToken, secretKey);
-        // console.log(decoded_token);
         if (!decoded_token) {
             return resp.status(401).json({
                 success: false,
                 message: "Invalid token provided"
             });
-        }
-        // console.log(" decoded_token ", decoded_token);
+        }        
         req.body.user_id = decoded_token.user._id;
+        req.body.user_role = decoded_token.user.role;
         next();
     } catch (error) {
-        console.log("Error in authenticating user " , error);
+        console.log("Error in authenticating user ", error);
         if (error.name === 'TokenExpiredError') {
             const decodedUser = jwt.decode(accessToken);
             resp.clearCookie("accessToken", options);
             const newToken = jwt.sign({ user: decodedUser.user }, secretKey, { expiresIn: '5m' });
             resp.cookie('accessToken', newToken, options);
             req.body.user_id = decodedUser.user._id;
+            req.body.user_role = decodedUser.user.role;
             return next();
         }
         return resp.status(400).json({
@@ -52,4 +52,14 @@ const checkAuth = async (req, resp, next) => {
     }
 }
 
-module.exports = { logUsers, checkAuth };
+const adminOnly = (req, resp, next) => {
+    if (!userRole || !['admin', 'superAdmin'].includes(userRole)) {
+        return resp.status(403).json({
+            success: false,
+            message: "You are not allowed to access this page"
+        });
+    }
+    next();
+}
+
+module.exports = { logUsers, checkAuth, adminOnly };
