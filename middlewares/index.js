@@ -53,6 +53,7 @@ const checkAuth = async (req, resp, next) => {
 }
 
 const adminOnly = (req, resp, next) => {
+    const userRole = req.body.user_role;
     if (!userRole || !['admin', 'superAdmin'].includes(userRole)) {
         return resp.status(403).json({
             success: false,

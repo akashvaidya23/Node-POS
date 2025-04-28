@@ -5,9 +5,15 @@ var jwt = require('jsonwebtoken');
 const { secretKey, options } = require("../constant");
 
 const HandleGetAllUsers = async (req, response, err) => {
+    const { page, per_page } = req.query;
     try {
-        const allUsers = await User.find({});
-        return response.json({ status: 200, users: allUsers });
+        const limit = parseInt(per_page);
+        const skip = (parseInt(page) - 1) * per_page;
+        const allUsers = await User.find({})
+            .limit(limit)
+            .skip(skip);
+        const usersCount = await User.find({}).countDocuments();
+        return response.json({ status: 200, users: allUsers, usersCount });
     } catch (Exception) {
         return response.json({ status: 500, message: "Something went wrong", error: Exception });
     }
@@ -45,6 +51,7 @@ const handleDeleteUserById = async (req, resp) => {
 }
 
 const HandleCreateNewUser = async (req, resp) => {
+    const session = await mongoose.startSession();
     try {
         const body = req.body;
         console.log("body ", body);
@@ -61,6 +68,8 @@ const HandleCreateNewUser = async (req, resp) => {
         const createdUser = await User.findById(result._id).select("-password");
         // console.log("createdUser ", createdUser.toObject());
         const accessToken = jwt.sign(createdUser.toObject(), secretKey, { expiresIn: '5m' });
+        await session.commitTransaction();
+        session.endSession();
         return resp.status(200)
             .cookie('accessToken', accessToken, options)
             .json({
@@ -69,6 +78,7 @@ const HandleCreateNewUser = async (req, resp) => {
                 message: 'User created successfully'
             });
     } catch (Exception) {
+        await session.abortTransaction();
         console.log(Exception);
         return resp.status(500).json({ success: false, message: "Something went wrong" });
     }

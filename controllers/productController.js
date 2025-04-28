@@ -1,3 +1,4 @@
+const { default: mongoose } = require("mongoose");
 const { Brand } = require("../models/brand");
 const { Category } = require("../models/category");
 const { Product } = require("../models/product");
@@ -5,13 +6,22 @@ const fs = require("fs");
 
 // Get all the products
 const Index = async (req, resp) => {
+    let { page, per_page } = req.query;
+    page = page ? page : 1;
+    per_page = per_page ? per_page : 10;
     try {
+        const limit = parseInt(per_page);
+        const skip = (parseInt(page) - 1) * per_page;
         const products = await Product.find({})
+            .limit(limit)
+            .skip(skip)
             .populate(['category', 'brand', 'created_by']);
+        const productsCount = await Product.find({}).countDocuments();
         return resp.status(200).json({
             success: true,
             message: "Products fetched successfully",
-            products
+            products,
+            productsCount
         });
     } catch (error) {
         console.log("Error in fetching products ", error);
@@ -24,7 +34,9 @@ const Index = async (req, resp) => {
 
 // Store the product
 const Store = async (req, resp) => {
+    const session = await mongoose.startSession();
     try {
+        session.startTransaction();
         const { name, sku, category, brand, description, purchase_price, gst, gst_type, user_id } = req.body;
         const errors = [];
         if (!name) {
@@ -43,7 +55,6 @@ const Store = async (req, resp) => {
             errors.push({ brand: "Brand can not be null" });
         } else {
             const checkBrand = await Brand.findById(brand);
-            // console.log("checkBrand ", checkBrand);
             if (!checkBrand) {
                 errors.push({ brandNotFound: `Brand with id ${brand} does not exist` });
             }
@@ -52,14 +63,11 @@ const Store = async (req, resp) => {
             errors.push({ category: "Category can not be null" });
         } else {
             const checkCategory = await Category.findById(category);
-            // console.log("checkCategory ", checkCategory);
             if (!checkCategory) {
                 errors.push({ categoryNotFound: `Category with id ${category} does not exist` });
             }
         }
-        // console.log("gst ", typeof gst);
         const gsts = [0.00, 5.00, 10.00, 12.00, 18.00, 28.00];
-        // console.log("gst includes ", gsts.includes(parseFloat(gst)));
         if (!gsts.includes(parseFloat(gst))) {
             errors.push({ GSTError: "GST does not exists" });
         }
@@ -70,8 +78,12 @@ const Store = async (req, resp) => {
                 errors
             });
         }
-        const selling_price = purchase_price * (100 + gst) / 100;
+        const selling_price = parseInt(purchase_price + (purchase_price * gst / 100)).toFixed(2);
+        // console.log(" selling_price " , parseInt(selling_price).toFixed(2));
+        // return resp.json({});
         const newProduct = await Product.create({ name, sku, category, brand, description, purchase_price, gst, gst_type, selling_price, created_by: user_id });
+        await session.commitTransaction();
+        session.endSession();
         if (newProduct) {
             return resp.status(200).json({
                 success: true,
@@ -80,6 +92,7 @@ const Store = async (req, resp) => {
             });
         }
     } catch (error) {
+        await session.abortTransaction();
         console.log("Error in creating product ", error);
         fs.appendFile('error.log', `${new Date().toISOString()} - Error in creating product: ${error?.message}\n`, (err) => {
             if (err) {
