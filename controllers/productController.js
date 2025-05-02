@@ -134,12 +134,16 @@ const Show = async (req, resp) => {
 
 // Delete product by ID
 const Delete = async (req, resp) => {
+    const session = await mongoose.startSession();
     try {
+        session.startTransaction();
         const id = req.params.id;
         const product = await Product.findById({ _id: id });
         console.log(product);
         if (product) {
             const result = await product.deleteOne();
+            await session.commitTransaction();
+            session.endSession();
             if (result) {
                 return resp.status(200).json({
                     success: true,
@@ -158,12 +162,15 @@ const Delete = async (req, resp) => {
             })
         }
     } catch (error) {
+        session.abortTransaction();
         console.log("Error in deleting product " + error);
         return resp.status(500).json({
             success: false,
             message: "Error in deleting product"
-        })
+        });
     }
 }
 
-module.exports = { Store, Index, Show, Delete };
+const ImportProducts = async(req, resp) => {}
+
+module.exports = { Store, Index, Show, Delete, ImportProducts };

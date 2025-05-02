@@ -8,10 +8,14 @@ const { categoryRouter } = require('./routes/category');
 const { userRouter } = require("./routes/user");
 const { brandRouter } = require('./routes/brand');
 const { productRouter } = require('./routes/product');
+const { countryRouter } = require("./routes/country");
+const { stateRouter } = require("./routes/state");
+const { cityRouter } = require("./routes/city");
 var cookieParcer = require('cookie-parser');
 const multer = require('multer');
 const upload = multer();
 const fs = require("fs");
+const { supplierRouter } = require("./routes/supplier");
 
 app.use(express.json({
     limit: "20kb"
@@ -40,6 +44,10 @@ app.use("/api/users", userRouter);
 app.use("/api/category", categoryRouter);
 app.use("/api/brand", brandRouter);
 app.use("/api/product", productRouter);
+app.use("/api/country", countryRouter);
+app.use("/api/state", stateRouter);
+app.use("/api/city", cityRouter);
+app.use("/api/supplier", supplierRouter);
 
 app.get("/", (req, res) => {
     return res.json({ 'message': "Welcome to POS" });

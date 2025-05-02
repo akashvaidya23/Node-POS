@@ -1,4 +1,6 @@
+const { default: mongoose } = require("mongoose");
 const { Category } = require("../models/category");
+const { Product } = require("../models/product");
 
 const Index = async (req, resp) => {
     const { page, per_page } = req.query;
@@ -25,6 +27,7 @@ const Index = async (req, resp) => {
 const Store = async (req, resp) => {
     const session = await mongoose.startSession();
     try {
+        session.startTransaction();
         const { name, parent_id, is_child } = req.body;
         if (!name || is_child == null) {
             return resp.status(400).json({
@@ -50,14 +53,22 @@ const Store = async (req, resp) => {
     }
 }
 
-const Drop = async (req, resp) => {
+const Delete = async (req, resp) => {
     const session = await mongoose.startSession();
     try {
+        session.startTransaction();
         const id = req.params.id;
         if (!id) {
             return resp.status(400).json({
                 success: false,
                 message: "Invalid request"
+            });
+        }
+        const countProducts = await Product.find({category: id}).countDocuments();
+        if(countProducts) {
+            return resp.status(400).json({
+                success: false,
+                message: "Category can not be deleted as it is associated with some products"
             });
         }
         const response = await Category.findByIdAndDelete(id);
@@ -68,8 +79,8 @@ const Drop = async (req, resp) => {
             message: "Category deleted successfully",
         });
     } catch (error) {
-        await session.abortTransaction();
         console.log("Error in deleting category ", error);
+        await session.abortTransaction();
         return resp.status(500).json({
             success: false,
             message: "Error in deleting category"
@@ -80,6 +91,7 @@ const Drop = async (req, resp) => {
 const Update = async (req, resp) => {
     const session = await mongoose.startSession();
     try {
+        session.startTransaction();
         const id = req.params.id;
         if(!id) {
             return resp.status(400).json({
@@ -113,4 +125,4 @@ const Update = async (req, resp) => {
     }
 }
 
-module.exports = { Store, Index, Drop, Update };
+module.exports = { Store, Index, Delete, Update };

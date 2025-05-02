@@ -4,7 +4,17 @@ var jwt = require('jsonwebtoken');
 
 const logUsers = (fileName) => {
     return (req, resp, next) => {
-        const log = `Request url is ${req.url} and the method is ${req.method} and payload is ${JSON.stringify(req.body)} sent on ${Date.now()} \n`
+        // console.log("body ", typeof req.body);
+        // console.log(req.body.hasOwnProperty('password'));
+        let payload;
+        // if(req.body.hasOwnProperty('password')) {
+        //     let {password, ...rest} = req.body;
+        //     payload = rest;
+        // } else {
+        //     payload = req.body;
+        // }
+        // console.log("request ", payload);
+        const log = `Request url is ${req.url} and the method is ${req.method} and payload is ${JSON.stringify(payload)} sent on ${Date.now()} \n`
         fs.appendFile("./pos.log", log, (err, resp) => {
             if (!err) {
                 next();
