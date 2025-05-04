@@ -2,7 +2,15 @@ const { default: mongoose } = require("mongoose");
 const { Brand } = require("../models/brand");
 const { Category } = require("../models/category");
 const { Product } = require("../models/product");
+const cloudinary = require('cloudinary').v2;
+cloudinary.config({
+    secure: true,
+    cloud_name: "daltnzpio",
+    api_key: "554636846645196",
+    api_secret: "fP3Dx3GNiQlNoJGCsNUYhV0zJoY",
+});
 const fs = require("fs");
+const { uploadFile } = require("../utils/common");
 
 // Get all the products
 const Index = async (req, resp) => {
@@ -35,6 +43,7 @@ const Index = async (req, resp) => {
 // Store the product
 const Store = async (req, resp) => {
     const session = await mongoose.startSession();
+    const filePath = req?.file?.path;
     try {
         session.startTransaction();
         const { name, sku, category, brand, description, purchase_price, gst, gst_type, user_id } = req.body;
@@ -78,10 +87,13 @@ const Store = async (req, resp) => {
                 errors
             });
         }
-        const selling_price = parseInt(purchase_price + (purchase_price * gst / 100)).toFixed(2);
-        // console.log(" selling_price " , parseInt(selling_price).toFixed(2));
-        // return resp.json({});
-        const newProduct = await Product.create({ name, sku, category, brand, description, purchase_price, gst, gst_type, selling_price, created_by: user_id });
+        const tax_amount = parseFloat(purchase_price * gst / 100);
+        const selling_price = parseFloat(purchase_price) + tax_amount;
+        let uploadImageResp;
+        if (filePath) {
+            uploadImageResp = await uploadFile(filePath, "POS/products");
+        }
+        const newProduct = await Product.create({ name, sku, category, brand, description, purchase_price, gst, gst_type, selling_price, created_by: user_id, image_url: uploadImageResp?.url });
         await session.commitTransaction();
         session.endSession();
         if (newProduct) {
@@ -171,6 +183,6 @@ const Delete = async (req, resp) => {
     }
 }
 
-const ImportProducts = async(req, resp) => {}
+const ImportProducts = async (req, resp) => { }
 
 module.exports = { Store, Index, Show, Delete, ImportProducts };

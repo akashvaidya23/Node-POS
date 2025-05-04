@@ -1,8 +1,29 @@
 const { default: mongoose } = require("mongoose");
 const { Supplier } = require("../models/supplier");
 
-const Index = () => {
-
+const Index = async (req, resp) => {
+    const page = req.params.page_no;
+    const per_page = req.params.per_page;
+    try {
+        const limit = parseInt(per_page);
+        const skip = (parseInt(page) - 1) * per_page;
+        const suppliers = await Supplier.find({})
+            .skip(skip)
+            .limit(limit)
+            .populate(['city', 'state', 'country']);
+        return resp.status(200).json({
+            success: true,
+            message: "Suppliers fetched successfully",
+            suppliers
+        });
+    } catch (error) {
+        console.log("Error in fetching suppliers ", error);
+        return resp.status(500).json({
+            success: false,
+            message: "Error in fetching suppliers",
+            error: error?.message
+        });
+    }
 }
 
 const Store = async (req, resp) => {

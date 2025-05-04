@@ -39,6 +39,9 @@ const ProductSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    image_url: {
+        type: String,
+    },
     created_by: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User"

@@ -2,7 +2,11 @@ const { User } = require("../models/user");
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 var jwt = require('jsonwebtoken');
-const { secretKey, options } = require("../constant");
+const { options } = require("../constant");
+const { default: mongoose } = require("mongoose");
+const { uploadFile } = require("../utils/common");
+require("dotenv").config();
+const secretKey = process.env.LocalsecretKey;
 
 const HandleGetAllUsers = async (req, response, err) => {
     const { page, per_page } = req.query;
@@ -52,7 +56,15 @@ const handleDeleteUserById = async (req, resp) => {
 
 const HandleCreateNewUser = async (req, resp) => {
     const session = await mongoose.startSession();
+    const files = req.files;
+    let avatar;
+    let profile_photo;
+    if (!files) {
+        avatar = files.avatar[0].path;
+        profile_photo = files.profile_photo[0].path;
+    }
     try {
+        session.startTransaction();
         const body = req.body;
         console.log("body ", body);
         const checkUser = await User.findOne({ email: body.email });
@@ -63,11 +75,18 @@ const HandleCreateNewUser = async (req, resp) => {
                 message: `User with email already exists`
             });
         }
+        if (avatar) {
+            const avatarImageResp = await uploadFile(avatar, "POS/customers");
+            body.avatar = avatarImageResp.url;
+        }
+        if (profile_photo) {
+            const profilePhotoResp = await uploadFile(profile_photo, "POS/customers");
+            body.profile_photo = profilePhotoResp.url;
+        }
         body.password = await bcrypt.hash(body.password, saltRounds);
         const result = await User.create(body);
         const createdUser = await User.findById(result._id).select("-password");
-        // console.log("createdUser ", createdUser.toObject());
-        const accessToken = jwt.sign(createdUser.toObject(), secretKey, { expiresIn: '5m' });
+        const accessToken = jwt.sign(createdUser.toObject(), secretKey, { expiresIn: '60m' });
         await session.commitTransaction();
         session.endSession();
         return resp.status(200)
@@ -110,14 +129,14 @@ const handleLogin = async (req, resp) => {
         existingUser = existingUser.toObject();
         const compared_password = await bcrypt.compare(user_password, existingUser.password);
         if (compared_password) {
-            const { password, __v, ...user } = existingUser;
-            var accessToken = jwt.sign({ user }, secretKey, { expiresIn: '5m' });
+            delete existingUser.password;
+            let accessToken = jwt.sign(existingUser, secretKey, { expiresIn: '60m' });
             return resp.status(200).
                 cookie("accessToken", accessToken, options).
                 json({
                     success: true,
                     message: "Logged in successfully",
-                    user
+                    user: existingUser
                 });
         } else {
             return resp.status(401).json({

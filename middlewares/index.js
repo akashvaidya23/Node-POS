@@ -1,19 +1,12 @@
 const fs = require('fs');
-const { secretKey, options } = require('../constant');
+const { options } = require('../constant');
 var jwt = require('jsonwebtoken');
+require("dotenv").config();
+const secretKey = process.env.LocalsecretKey;
 
 const logUsers = (fileName) => {
     return (req, resp, next) => {
-        // console.log("body ", typeof req.body);
-        // console.log(req.body.hasOwnProperty('password'));
-        let payload;
-        // if(req.body.hasOwnProperty('password')) {
-        //     let {password, ...rest} = req.body;
-        //     payload = rest;
-        // } else {
-        //     payload = req.body;
-        // }
-        // console.log("request ", payload);
+        let payload;        
         const log = `Request url is ${req.url} and the method is ${req.method} and payload is ${JSON.stringify(payload)} sent on ${Date.now()} \n`
         fs.appendFile("./pos.log", log, (err, resp) => {
             if (!err) {
@@ -40,21 +33,22 @@ const checkAuth = async (req, resp, next) => {
                 success: false,
                 message: "Invalid token provided"
             });
-        }        
-        req.body.user_id = decoded_token.user._id;
-        req.body.user_role = decoded_token.user.role;
+        }
+        req.body.user_id = decoded_token._id;
+        req.body.user_role = decoded_token.role;
         next();
     } catch (error) {
         console.log("Error in authenticating user ", error);
-        if (error.name === 'TokenExpiredError') {
-            const decodedUser = jwt.decode(accessToken);
-            resp.clearCookie("accessToken", options);
-            const newToken = jwt.sign({ user: decodedUser.user }, secretKey, { expiresIn: '5m' });
-            resp.cookie('accessToken', newToken, options);
-            req.body.user_id = decodedUser.user._id;
-            req.body.user_role = decodedUser.user.role;
-            return next();
-        }
+        // if (error.name === 'TokenExpiredError') {
+        //     const decodedUser = jwt.decode(accessToken);
+        //     resp.clearCookie("accessToken", options);
+        //     const newToken = jwt.sign({ user: decodedUser.user }, secretKey, { expiresIn: '5m' });
+        //     resp.cookie('accessToken', newToken, options);
+        //     console.log("decodedUser " , decoded_token);
+        //     req.body.user_id = decodedUser.user._id;
+        //     req.body.user_role = decodedUser.user.role;
+        //     return next();
+        // }
         return resp.status(400).json({
             success: false,
             message: "Unauthorized request"

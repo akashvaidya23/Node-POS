@@ -28,13 +28,16 @@ const supplierSchema = new mongoose.Schema({
         type: String
     },
     city: {
-        type: String
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "City"
     },
     state: {
-        type: String
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "State"
     },
     country: {
-        type: String
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Country"
     },
     locality: {
         type: String

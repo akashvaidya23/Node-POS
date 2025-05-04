@@ -3,7 +3,6 @@ const cors = require('cors');
 const app = express();
 const { connectMongoDB } = require('./connection');
 const { logUsers } = require('./middlewares');
-const { url, PORT, DB_name } = require('./constant');
 const { categoryRouter } = require('./routes/category');
 const { userRouter } = require("./routes/user");
 const { brandRouter } = require('./routes/brand');
@@ -16,6 +15,8 @@ const multer = require('multer');
 const upload = multer();
 const fs = require("fs");
 const { supplierRouter } = require("./routes/supplier");
+const PORT = process.env.PORT;
+require('dotenv').config();
 
 app.use(express.json({
     limit: "20kb"
@@ -29,10 +30,11 @@ app.use(cors({
     origin: 'http://localhost:5173',
     credentials: true,
 }));
-app.use(upload.any());
 
 // Connection to mongo
-connectMongoDB(url, DB_name).then(() => {
+const db_url = process.env.DB_url;
+const DB_name = process.env.DB_name;
+connectMongoDB(db_url, DB_name).then(() => {
     console.log("Connected to MongoDB successfully");
 });
 
